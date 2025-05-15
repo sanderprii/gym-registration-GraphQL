@@ -15,8 +15,7 @@ A comprehensive gym registration system providing identical functionality throug
 - [Testing](#testing)
 - [Client Examples](#client-examples)
 - [Project Structure](#project-structure)
-- [Development](#development)
-- [Troubleshooting](#troubleshooting)
+
 
 ## Project Overview
 
@@ -360,68 +359,3 @@ npm run db:reset
 # Validate GraphQL schema
 npm run validate:schema
 ```
-
-### GraphQL Schema Development
-
-1. Edit `schema/schema.graphql` for schema changes
-2. Update resolvers in `src/server.js`
-3. Run validation: `npm run validate:schema`
-4. Test changes: `npm test`
-
-### Adding New Operations
-
-1. Define types and operations in schema
-2. Implement resolvers
-3. Add tests
-4. Update client examples
-5. Document in README
-
-## Troubleshooting
-
-### Common Issues
-
-1. **GraphQL Schema Validation Errors**
-   ```bash
-   npm run validate:schema
-   ```
-
-2. **Apollo Server Connection Issues**
-   - Check port 4000 is available
-   - Verify environment variables
-   - Check server logs for details
-
-3. **Database Issues**
-   ```bash
-   rm prisma/dev.db
-   npx prisma migrate dev --name init
-   ```
-
-4. **Port Conflicts**
-   ```bash
-   # Kill process on specific port
-   lsof -ti:4000 | xargs kill -9
-   ```
-
-5. **GraphQL Playground Not Loading**
-   - Ensure server is running
-   - Check browser console for errors
-   - Try accessing `http://localhost:4000/graphql` directly
-
-### Debugging GraphQL Queries
-
-1. Use GraphQL Playground at `http://localhost:4000/graphql`
-2. Check query syntax and variables
-3. Use introspection to explore schema
-4. Enable detailed error messages in development
-
-## License
-
-This project is created for educational purposes.
-
-## Authors
-
-Created as part of a programming course assignment demonstrating API architecture equivalence.
-
----
-
-For more information about GraphQL, visit [https://graphql.org](https://graphql.org)

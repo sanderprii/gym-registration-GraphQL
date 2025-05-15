@@ -54,6 +54,44 @@ const getUser = (context) => {
     }
 };
 
+// Helper function to encode cursor (base64 encoding of offset)
+const encodeCursor = (offset) => Buffer.from(offset.toString()).toString('base64');
+
+// Helper function to decode cursor
+const decodeCursor = (cursor) => {
+    try {
+        return parseInt(Buffer.from(cursor, 'base64').toString());
+    } catch {
+        return 0;
+    }
+};
+
+// Helper function to handle Relay-style pagination
+const handleRelayPagination = (args) => {
+    const { first, after, last, before, page = 1, pageSize = 20 } = args;
+
+    // If using new Relay-style pagination
+    if (first !== undefined || after !== undefined || last !== undefined || before !== undefined) {
+        let offset = 0;
+        let limit = first || last || 20;
+
+        if (after) {
+            offset = decodeCursor(after) + 1;
+        }
+
+        if (before) {
+            const beforeOffset = decodeCursor(before);
+            offset = Math.max(0, beforeOffset - limit);
+        }
+
+        return { offset, limit, isRelay: true };
+    }
+
+    // Fall back to legacy pagination
+    const offset = (page - 1) * pageSize;
+    return { offset, limit: pageSize, isRelay: false };
+};
+
 // Resolvers
 const resolvers = {
     DateTime: DateTimeResolver,
@@ -85,15 +123,15 @@ const resolvers = {
             }
         },
 
-        // Trainees
-        trainees: async (_, { page, pageSize }, context) => {
+        // Trainees with Relay pagination support
+        trainees: async (_, args, context) => {
             getUser(context);
-            const skip = (page - 1) * pageSize;
+            const { offset, limit, isRelay } = handleRelayPagination(args);
 
             const [trainees, total] = await prisma.$transaction([
                 prisma.trainee.findMany({
-                    skip,
-                    take: pageSize,
+                    skip: offset,
+                    take: limit,
                     select: {
                         id: true,
                         name: true,
@@ -106,10 +144,56 @@ const resolvers = {
                 prisma.trainee.count()
             ]);
 
-            return {
-                data: trainees,
-                pagination: { page, pageSize, total }
-            };
+            if (isRelay) {
+                // Return Relay-style connection
+                const edges = trainees.map((trainee, index) => ({
+                    cursor: encodeCursor(offset + index),
+                    node: trainee
+                }));
+
+                const pageInfo = {
+                    hasNextPage: offset + limit < total,
+                    hasPreviousPage: offset > 0,
+                    startCursor: edges.length > 0 ? edges[0].cursor : null,
+                    endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null
+                };
+
+                return {
+                    edges,
+                    pageInfo,
+                    // Legacy fields for backward compatibility
+                    data: trainees,
+                    pagination: {
+                        page: Math.floor(offset / limit) + 1,
+                        pageSize: limit,
+                        total
+                    }
+                };
+            } else {
+                // Return legacy pagination format with Relay fields for schema compliance
+                const edges = trainees.map((trainee, index) => ({
+                    cursor: encodeCursor(offset + index),
+                    node: trainee
+                }));
+
+                const pageInfo = {
+                    hasNextPage: offset + limit < total,
+                    hasPreviousPage: offset > 0,
+                    startCursor: edges.length > 0 ? edges[0].cursor : null,
+                    endCursor: edges.length > 0 ? edges[edges.length - 1].cursor : null
+                };
+
+                return {
+                    data: trainees,
+                    pagination: {
+                        page: args.page || 1,
+                        pageSize: args.pageSize || 20,
+                        total
+                    },
+                    edges,
+                    pageInfo
+                };
+            }
         },
 
         trainee: async (_, { id }, context) => {
@@ -293,135 +377,45 @@ const resolvers = {
             return 'Successfully logged out';
         },
 
-        // Trainees
-        createTrainee: async (_, { input }) => {
-            const { name, email, password, timezone } = input;
-
-            if (!name || !email || !password) {
-                throw new Error('Name, email, and password are required');
-            }
-
-            const existingTrainee = await prisma.trainee.findUnique({
-                where: { email }
-            });
-
-            if (existingTrainee) {
-                throw new Error('Email is already in use');
-            }
-
-            const newTrainee = await prisma.trainee.create({
-                data: { name, email, password, timezone },
-                select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                    timezone: true,
-                    createdAt: true,
-                    updatedAt: true
-                }
-            });
-
-            return newTrainee;
-        },
-
-        updateTrainee: async (_, { id, input }, context) => {
+        // Registrations
+        createRegistration: async (_, { input }, context) => {
             getUser(context);
+            const { eventId, userId, inviteeEmail, startTime, endTime, status } = input;
 
-            const updateData = {};
-            if (input.name !== undefined) updateData.name = input.name;
-            if (input.email !== undefined) updateData.email = input.email;
-            if (input.password !== undefined) updateData.password = input.password;
-            if (input.timezone !== undefined) updateData.timezone = input.timezone;
+            if (!eventId || !userId || !inviteeEmail || !startTime) {
+                throw new Error('eventId, userId, inviteeEmail, and startTime are required');
+            }
 
-            try {
-                const updatedTrainee = await prisma.trainee.update({
-                    where: { id },
-                    data: updateData,
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                        timezone: true,
-                        createdAt: true,
-                        updatedAt: true
+            const trainee = await prisma.trainee.findUnique({
+                where: { id: userId }
+            });
+
+            if (!trainee) {
+                throw new Error('Trainee not found');
+            }
+
+            return await prisma.registration.create({
+                data: {
+                    eventId,
+                    userId,
+                    inviteeEmail,
+                    startTime: new Date(startTime),
+                    endTime: endTime ? new Date(endTime) : null,
+                    status: status || 'scheduled'
+                },
+                include: {
+                    trainee: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            timezone: true,
+                            createdAt: true,
+                            updatedAt: true
+                        }
                     }
-                });
-
-                return updatedTrainee;
-            } catch (error) {
-                if (error.code === 'P2025') {
-                    throw new Error('Trainee not found');
                 }
-                throw error;
-            }
-        },
-
-        deleteTrainee: async (_, { id }, context) => {
-            getUser(context);
-
-            try {
-                await prisma.trainee.delete({
-                    where: { id }
-                });
-                return 'Trainee deleted successfully';
-            } catch (error) {
-                if (error.code === 'P2025') {
-                    throw new Error('Trainee not found');
-                }
-                throw error;
-            }
-        },
-
-        // Workouts
-        createWorkout: async (_, { input }, context) => {
-            getUser(context);
-            const { name, duration, description, color } = input;
-
-            if (!name || !duration) {
-                throw new Error('Name and duration are required');
-            }
-
-            return await prisma.workout.create({
-                data: { name, duration, description, color }
             });
-        },
-
-        updateWorkout: async (_, { id, input }, context) => {
-            getUser(context);
-
-            const updateData = {};
-            if (input.name !== undefined) updateData.name = input.name;
-            if (input.duration !== undefined) updateData.duration = input.duration;
-            if (input.description !== undefined) updateData.description = input.description;
-            if (input.color !== undefined) updateData.color = input.color;
-
-            try {
-                return await prisma.workout.update({
-                    where: { id },
-                    data: updateData
-                });
-            } catch (error) {
-                if (error.code === 'P2025') {
-                    throw new Error('Workout not found');
-                }
-                throw error;
-            }
-        },
-
-        deleteWorkout: async (_, { id }, context) => {
-            getUser(context);
-
-            try {
-                await prisma.workout.delete({
-                    where: { id }
-                });
-                return 'Workout deleted successfully';
-            } catch (error) {
-                if (error.code === 'P2025') {
-                    throw new Error('Workout not found');
-                }
-                throw error;
-            }
         },
 
         // Routines
@@ -466,6 +460,181 @@ const resolvers = {
             };
         },
 
+        // Trainees
+        createTrainee: async (_, { input }) => {
+            const { name, email, password, timezone } = input;
+
+            if (!name || !email || !password) {
+                throw new Error('Name, email, and password are required');
+            }
+
+            const existingTrainee = await prisma.trainee.findUnique({
+                where: { email }
+            });
+
+            if (existingTrainee) {
+                throw new Error('Email is already in use');
+            }
+
+            const newTrainee = await prisma.trainee.create({
+                data: { name, email, password, timezone },
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    timezone: true,
+                    createdAt: true,
+                    updatedAt: true
+                }
+            });
+
+            return newTrainee;
+        },
+
+        // Workouts
+        createWorkout: async (_, { input }, context) => {
+            getUser(context);
+            const { name, duration, description, color } = input;
+
+            if (!name || !duration) {
+                throw new Error('Name and duration are required');
+            }
+
+            return await prisma.workout.create({
+                data: { name, duration, description, color }
+            });
+        },
+
+        deleteRegistration: async (_, { id }, context) => {
+            getUser(context);
+
+            try {
+                await prisma.registration.delete({
+                    where: { id }
+                });
+                return 'Registration deleted successfully';
+            } catch (error) {
+                if (error.code === 'P2025') {
+                    throw new Error('Registration not found');
+                }
+                throw error;
+            }
+        },
+
+        deleteTrainee: async (_, { id }, context) => {
+            getUser(context);
+
+            try {
+                await prisma.trainee.delete({
+                    where: { id }
+                });
+                return 'Trainee deleted successfully';
+            } catch (error) {
+                if (error.code === 'P2025') {
+                    throw new Error('Trainee not found');
+                }
+                throw error;
+            }
+        },
+
+        deleteTraineeRoutine: async (_, { traineeId }, context) => {
+            getUser(context);
+
+            const deletedRoutine = await prisma.routine.deleteMany({
+                where: { userId: traineeId }
+            });
+
+            if (deletedRoutine.count === 0) {
+                throw new Error('Routine not found');
+            }
+
+            return 'Routine deleted successfully';
+        },
+
+        deleteWorkout: async (_, { id }, context) => {
+            getUser(context);
+
+            try {
+                await prisma.workout.delete({
+                    where: { id }
+                });
+                return 'Workout deleted successfully';
+            } catch (error) {
+                if (error.code === 'P2025') {
+                    throw new Error('Workout not found');
+                }
+                throw error;
+            }
+        },
+
+        updateRegistration: async (_, { id, input }, context) => {
+            getUser(context);
+
+            const updateData = {};
+            if (input.eventId !== undefined) updateData.eventId = input.eventId;
+            if (input.userId !== undefined) updateData.userId = input.userId;
+            if (input.inviteeEmail !== undefined) updateData.inviteeEmail = input.inviteeEmail;
+            if (input.startTime !== undefined) updateData.startTime = new Date(input.startTime);
+            if (input.endTime !== undefined) updateData.endTime = input.endTime ? new Date(input.endTime) : null;
+            if (input.status !== undefined) updateData.status = input.status;
+
+            try {
+                return await prisma.registration.update({
+                    where: { id },
+                    data: updateData,
+                    include: {
+                        trainee: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                                timezone: true,
+                                createdAt: true,
+                                updatedAt: true
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                if (error.code === 'P2025') {
+                    throw new Error('Registration not found');
+                }
+                throw error;
+            }
+        },
+
+        updateTrainee: async (_, { id, input }, context) => {
+            getUser(context);
+
+            const updateData = {};
+            if (input.name !== undefined) updateData.name = input.name;
+            if (input.email !== undefined) updateData.email = input.email;
+            if (input.password !== undefined) updateData.password = input.password;
+            if (input.timezone !== undefined) updateData.timezone = input.timezone;
+
+            try {
+                const updatedTrainee = await prisma.trainee.update({
+                    where: { id },
+                    data: updateData,
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        timezone: true,
+                        createdAt: true,
+                        updatedAt: true
+                    }
+                });
+
+                return updatedTrainee;
+            } catch (error) {
+                if (error.code === 'P2025') {
+                    throw new Error('Trainee not found');
+                }
+                throw error;
+            }
+        },
+
         updateTraineeRoutine: async (_, { traineeId, input }, context) => {
             getUser(context);
             const { availability } = input;
@@ -507,108 +676,23 @@ const resolvers = {
             };
         },
 
-        deleteTraineeRoutine: async (_, { traineeId }, context) => {
-            getUser(context);
-
-            const deletedRoutine = await prisma.routine.deleteMany({
-                where: { userId: traineeId }
-            });
-
-            if (deletedRoutine.count === 0) {
-                throw new Error('Routine not found');
-            }
-
-            return 'Routine deleted successfully';
-        },
-
-        // Registrations
-        createRegistration: async (_, { input }, context) => {
-            getUser(context);
-            const { eventId, userId, inviteeEmail, startTime, endTime, status } = input;
-
-            if (!eventId || !userId || !inviteeEmail || !startTime) {
-                throw new Error('eventId, userId, inviteeEmail, and startTime are required');
-            }
-
-            const trainee = await prisma.trainee.findUnique({
-                where: { id: userId }
-            });
-
-            if (!trainee) {
-                throw new Error('Trainee not found');
-            }
-
-            return await prisma.registration.create({
-                data: {
-                    eventId,
-                    userId,
-                    inviteeEmail,
-                    startTime: new Date(startTime),
-                    endTime: endTime ? new Date(endTime) : null,
-                    status: status || 'scheduled'
-                },
-                include: {
-                    trainee: {
-                        select: {
-                            id: true,
-                            name: true,
-                            email: true,
-                            timezone: true,
-                            createdAt: true,
-                            updatedAt: true
-                        }
-                    }
-                }
-            });
-        },
-
-        updateRegistration: async (_, { id, input }, context) => {
+        updateWorkout: async (_, { id, input }, context) => {
             getUser(context);
 
             const updateData = {};
-            if (input.eventId !== undefined) updateData.eventId = input.eventId;
-            if (input.userId !== undefined) updateData.userId = input.userId;
-            if (input.inviteeEmail !== undefined) updateData.inviteeEmail = input.inviteeEmail;
-            if (input.startTime !== undefined) updateData.startTime = new Date(input.startTime);
-            if (input.endTime !== undefined) updateData.endTime = input.endTime ? new Date(input.endTime) : null;
-            if (input.status !== undefined) updateData.status = input.status;
+            if (input.name !== undefined) updateData.name = input.name;
+            if (input.duration !== undefined) updateData.duration = input.duration;
+            if (input.description !== undefined) updateData.description = input.description;
+            if (input.color !== undefined) updateData.color = input.color;
 
             try {
-                return await prisma.registration.update({
+                return await prisma.workout.update({
                     where: { id },
-                    data: updateData,
-                    include: {
-                        trainee: {
-                            select: {
-                                id: true,
-                                name: true,
-                                email: true,
-                                timezone: true,
-                                createdAt: true,
-                                updatedAt: true
-                            }
-                        }
-                    }
+                    data: updateData
                 });
             } catch (error) {
                 if (error.code === 'P2025') {
-                    throw new Error('Registration not found');
-                }
-                throw error;
-            }
-        },
-
-        deleteRegistration: async (_, { id }, context) => {
-            getUser(context);
-
-            try {
-                await prisma.registration.delete({
-                    where: { id }
-                });
-                return 'Registration deleted successfully';
-            } catch (error) {
-                if (error.code === 'P2025') {
-                    throw new Error('Registration not found');
+                    throw new Error('Workout not found');
                 }
                 throw error;
             }

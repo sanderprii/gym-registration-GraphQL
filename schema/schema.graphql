@@ -137,7 +137,40 @@ type Session {
   trainee: Trainee
 }
 
-# Pagination Types
+# Relay Pagination Types
+"PageInfo for Relay-style pagination"
+type PageInfo {
+  "When paginating forwards, the cursor to continue"
+  endCursor: String
+  "When paginating forwards, are there more items?"
+  hasNextPage: Boolean!
+  "When paginating backwards, are there more items?"
+  hasPreviousPage: Boolean!
+  "When paginating backwards, the cursor to continue"
+  startCursor: String
+}
+
+"Edge for trainee in a connection"
+type TraineeEdge {
+  "A cursor for use in pagination"
+  cursor: String!
+  "The trainee at the end of the edge"
+  node: Trainee!
+}
+
+"Connection for paginated trainee results"
+type TraineeConnection {
+  "List of trainees (deprecated, use edges)"
+  data: [Trainee!]! @deprecated(reason: "Use edges instead")
+  "A list of edges"
+  edges: [TraineeEdge!]!
+  "Information to aid in pagination"
+  pageInfo: PageInfo!
+  "Pagination information (deprecated, use pageInfo)"
+  pagination: Pagination! @deprecated(reason: "Use pageInfo instead")
+}
+
+# Pagination Types (kept for backward compatibility)
 "Pagination metadata"
 type Pagination {
   "Current page number"
@@ -146,14 +179,6 @@ type Pagination {
   pageSize: Int!
   "Total number of items"
   total: Int!
-}
-
-"Connection for paginated trainee results"
-type TraineeConnection {
-  "List of trainees"
-  data: [Trainee!]!
-  "Pagination information"
-  pagination: Pagination!
 }
 
 # Input Types
@@ -302,12 +327,20 @@ type Query {
     traineeId: ID!
   ): Routine
 
-  "Get all trainees with pagination"
+  "Get all trainees with Relay-style pagination"
   trainees(
-    "Page number to retrieve"
-    page: Int = 1
-    "Number of items per page"
-    pageSize: Int = 20
+    "Returns the first n elements from the list"
+    first: Int
+    "Returns the elements in the list that come after the specified cursor"
+    after: String
+    "Returns the last n elements from the list"
+    last: Int
+    "Returns the elements in the list that come before the specified cursor"
+    before: String
+    "Page number to retrieve (deprecated, use first/after instead)"
+    page: Int @deprecated(reason: "Use first/after instead")
+    "Number of items per page (deprecated, use first instead)"
+    pageSize: Int @deprecated(reason: "Use first instead")
   ): TraineeConnection!
 
   "Get a specific workout by ID"
@@ -320,9 +353,61 @@ type Query {
   workouts: [Workout!]!
 }
 
-# Mutations
+# Mutations (sorted alphabetically)
 "Root mutation type"
 type Mutation {
+  # Registrations
+  "Create a new registration"
+  createRegistration(
+    "Registration details"
+    input: RegistrationInput!
+  ): Registration!
+
+  # Routines
+  "Create a new routine"
+  createRoutine(
+    "Routine details"
+    input: RoutineInput!
+  ): Routine!
+
+  # Trainees
+  "Create a new trainee"
+  createTrainee(
+    "Trainee details"
+    input: TraineeInput!
+  ): Trainee!
+
+  # Workouts
+  "Create a new workout"
+  createWorkout(
+    "Workout details"
+    input: WorkoutInput!
+  ): Workout!
+
+  "Delete a registration"
+  deleteRegistration(
+    "Registration ID to delete"
+    id: ID!
+  ): String!
+
+  "Delete a trainee"
+  deleteTrainee(
+    "Trainee ID to delete"
+    id: ID!
+  ): String!
+
+  "Delete a trainee's routine"
+  deleteTraineeRoutine(
+    "Trainee ID whose routine to delete"
+    traineeId: ID!
+  ): String!
+
+  "Delete a workout"
+  deleteWorkout(
+    "Workout ID to delete"
+    id: ID!
+  ): String!
+
   # Authentication
   "Log in a user"
   login(
@@ -333,19 +418,6 @@ type Mutation {
   "Log out the current user"
   logout: String!
 
-  # Registrations
-  "Create a new registration"
-  createRegistration(
-    "Registration details"
-    input: RegistrationInput!
-  ): Registration!
-
-  "Delete a registration"
-  deleteRegistration(
-    "Registration ID to delete"
-    id: ID!
-  ): String!
-
   "Update a registration"
   updateRegistration(
     "Registration ID to update"
@@ -353,40 +425,6 @@ type Mutation {
     "Updated registration data"
     input: RegistrationUpdateInput!
   ): Registration!
-
-  # Routines
-  "Create a new routine"
-  createRoutine(
-    "Routine details"
-    input: RoutineInput!
-  ): Routine!
-
-  "Delete a trainee's routine"
-  deleteTraineeRoutine(
-    "Trainee ID whose routine to delete"
-    traineeId: ID!
-  ): String!
-
-  "Update a trainee's routine"
-  updateTraineeRoutine(
-    "Trainee ID whose routine to update"
-    traineeId: ID!
-    "Updated routine data"
-    input: RoutineUpdateInput!
-  ): Routine!
-
-  # Trainees
-  "Create a new trainee"
-  createTrainee(
-    "Trainee details"
-    input: TraineeInput!
-  ): Trainee!
-
-  "Delete a trainee"
-  deleteTrainee(
-    "Trainee ID to delete"
-    id: ID!
-  ): String!
 
   "Update a trainee"
   updateTrainee(
@@ -396,18 +434,13 @@ type Mutation {
     input: TraineeUpdateInput!
   ): Trainee!
 
-  # Workouts
-  "Create a new workout"
-  createWorkout(
-    "Workout details"
-    input: WorkoutInput!
-  ): Workout!
-
-  "Delete a workout"
-  deleteWorkout(
-    "Workout ID to delete"
-    id: ID!
-  ): String!
+  "Update a trainee's routine"
+  updateTraineeRoutine(
+    "Trainee ID whose routine to update"
+    traineeId: ID!
+    "Updated routine data"
+    input: RoutineUpdateInput!
+  ): Routine!
 
   "Update a workout"
   updateWorkout(
