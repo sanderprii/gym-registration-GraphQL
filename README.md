@@ -1,248 +1,394 @@
-# Gym Registration API
+# Gym Registration GraphQL API
 
-A full-stack web application for managing gym training registrations with RESTful API and interactive frontend.
+A comprehensive gym registration system providing identical functionality through REST, SOAP, and **GraphQL** APIs. This project demonstrates functional equivalence between different API architectures for the same business logic.
 
-## 📋 Features
+## Table of Contents
 
-- **Authentication**: JWT-based authentication with login/logout
-- **Trainee Management**: Full CRUD operations for gym members
-- **Workout Types**: Manage different types of workouts
-- **Training Routines**: Set availability schedules for trainees
-- **Registrations**: Book and manage workout sessions
-- **OpenAPI Documentation**: Swagger UI for API testing (English and Estonian)
-- **Responsive Frontend**: Modern web interface for all operations
+- [Project Overview](#project-overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [GraphQL Schema](#graphql-schema)
+- [API Documentation](#api-documentation)
+- [Testing](#testing)
+- [Client Examples](#client-examples)
+- [Project Structure](#project-structure)
+- [Development](#development)
+- [Troubleshooting](#troubleshooting)
 
-## 🛠 Technology Stack
+## Project Overview
 
-### Backend
-- **Node.js** with Express.js
-- **SQLite** database
-- **Prisma ORM** for database management
-- **JWT** for authentication
-- **bcrypt** for password hashing
-- **CORS** enabled
-- **Swagger UI** for API documentation
+This project provides a complete gym registration management system with:
 
-### Frontend
-- **Vanilla JavaScript** (ES6+)
-- **HTML5** and **CSS3**
-- **Responsive design**
-- **Fetch API** for HTTP requests
+- **REST API** - Modern HTTP-based interface following RESTful principles
+- **SOAP API** - Enterprise-grade web service with full WSDL specification
+- **GraphQL API** - Modern query language for APIs with flexible data fetching
+- **Functional Equivalence** - All three APIs provide identical business functionality
+- **Comprehensive Testing** - Automated tests comparing REST, SOAP, and GraphQL responses
 
-## 📁 Project Structure
+### Core Entities
+
+- **Trainees** - Gym members with authentication
+- **Workouts** - Exercise types with duration and details
+- **Routines** - Trainee availability schedules
+- **Registrations** - Workout session bookings
+
+## Features
+
+### GraphQL API Features
+- Full schema definition with SDL (Schema Definition Language)
+- Introspection support for schema exploration
+- Flexible query structure - fetch only needed fields
+- Single endpoint for all operations
+- Real-time GraphQL Playground for testing
+- Type safety with comprehensive input validation
+
+### Common Features (Shared across all APIs)
+- Identical business logic
+- Same database backend
+- Equivalent error handling
+- Consistent data validation
+- JWT-based authentication
+
+## Architecture
 
 ```
-gym-registration-api/
-├── README.md
-├── .env.example
-├── .gitignore
-├── package.json
-├── server.js
-├── openapi.yaml         # English API documentation
-├── openapi-et.yaml      # Estonian API documentation
-├── prisma/
-│   ├── schema.prisma    # Database schema
-│   ├── dev.db          # SQLite database (auto-generated)
-│   └── migrations/     # Database migrations
-└── client/             # Frontend files
-    ├── index.html      # Login page
-    ├── dashboard.html  # Main dashboard
-    ├── trainees.html   # Trainees management
-    ├── workouts.html   # Workouts management
-    ├── routines.html   # Routines management
-    ├── registrations.html # Registrations management
-    ├── css/
-    │   └── style.css   # Styles
-    └── js/
-        ├── config.js   # Configuration
-        ├── api.js      # API utilities
-        ├── auth.js     # Authentication
-        ├── dashboard.js
-        ├── trainees.js
-        ├── workouts.js
-        ├── routines.js
-        └── registrations.js
+┌─────────────────────────────────────────────┐
+│                  Frontend                   │
+│            (HTML/CSS/JS)                    │
+└─────────────────┬───────────────────────────┘
+                  │
+┌─────────────────┴───────────────────────────┐
+│               API Layer                     │
+├─────────────────┬─────────────┬─────────────┤
+│    REST API     │  SOAP API   │ GraphQL API │
+│   (Port 3000)   │ (Port 3001) │ (Port 4000) │
+├─────────────────┴─────────────┴─────────────┤
+│           Business Logic Layer              │
+├─────────────────────────────────────────────┤
+│            Database Layer                   │
+│              (SQLite)                       │
+└─────────────────────────────────────────────┘
 ```
 
-## 🚀 Installation
+## Prerequisites
 
-### Prerequisites
-- Node.js (v16 or higher)
-- npm (Node Package Manager)
-- Python 3.x (for serving frontend)
+- **Node.js** 16.x or higher
+- **npm** 6.x or higher
+- **curl** (for testing)
 
-### Setup Instructions
+## Installation
 
 1. **Clone the repository**
-```bash
-git clone <repository-url>
-cd gym-registration-api
-```
+   ```bash
+   git clone https://github.com/your-repo/gym-registration-graphql
+   cd gym-registration-graphql
+   ```
 
 2. **Install dependencies**
-```bash
-npm install
-```
+   ```bash
+   npm install
+   ```
 
 3. **Set up environment variables**
-```bash
-cp .env.example .env
-```
+   ```bash
+   cp .env.example .env
+   ```
 
-Edit `.env` file:
-```env
-PORT=3000
-JWT_SECRET=your_secret_key_here
-DATABASE_URL="file:./dev.db"
-```
+   Edit `.env` file with your configuration:
+   ```env
+   DATABASE_URL="file:./dev.db"
+   PORT=3000
+   JWT_SECRET=your_secure_jwt_secret_here
+   GRAPHQL_PORT=4000
+   ```
 
 4. **Initialize database**
-```bash
-# Generate Prisma client
-npx prisma generate
+   ```bash
+   npx prisma generate
+   npx prisma migrate dev --name init
+   ```
 
-# Create and apply migrations
-npx prisma migrate dev --name init
+## Quick Start
+
+### Using the run script
+```bash
+chmod +x scripts/run.sh
+./scripts/run.sh
 ```
 
-## 🏃‍♂️ Running the Application
+This will start all three services:
+- REST API on port 3000
+- SOAP service on port 3001
+- GraphQL service on port 4000
 
-### Start the Backend Server
+### Manual startup (GraphQL only)
 ```bash
 npm start
 ```
-The API will be available at `http://localhost:3000`
 
-### Serve the Frontend
-```bash
-# Navigate to client directory
-cd client
+## GraphQL Schema
 
-# Using Python (recommended)
-python3 -m http.server 8080
+### Key Types
 
-# Or using Node.js http-server (if installed)
-npm install -g http-server
-http-server -p 8080
-```
-The frontend will be available at `http://localhost:8080`
+```graphql
+type Trainee {
+   id: ID!
+   name: String!
+   email: String!
+   timezone: String
+   createdAt: DateTime!
+   updatedAt: DateTime!
+   routines: [Routine!]!
+   registrations: [Registration!]!
+}
 
-## 📖 API Documentation
+type Workout {
+   id: ID!
+   name: String!
+   duration: Int!
+   description: String
+   color: String
+   createdAt: DateTime!
+   updatedAt: DateTime!
+}
 
-### Interactive Documentation
-- **English**: `http://localhost:3000/api-docs-en`
-- **Estonian**: `http://localhost:3000/api-docs-et`
+type Routine {
+   id: ID!
+   userId: String!
+   availability: [TimeSlot!]!
+   trainee: Trainee!
+   createdAt: DateTime!
+   updatedAt: DateTime!
+}
 
-### Main Endpoints
-
-#### Authentication
-- `POST /sessions` - Login
-- `DELETE /sessions` - Logout
-- `GET /sessions` - Check session
-
-#### Trainees
-- `GET /trainees` - List all trainees (with pagination)
-- `POST /trainees` - Create new trainee
-- `GET /trainees/:id` - Get trainee details
-- `PATCH /trainees/:id` - Update trainee
-- `DELETE /trainees/:id` - Delete trainee
-
-#### Workouts
-- `GET /workouts` - List all workouts
-- `POST /workouts` - Create new workout
-- `GET /workouts/:id` - Get workout details
-- `PATCH /workouts/:id` - Update workout
-- `DELETE /workouts/:id` - Delete workout
-
-#### Routines
-- `GET /routines` - List all routines
-- `POST /routines` - Create new routine
-- `GET /routines/trainee/:traineeId` - Get trainee's routine
-- `PATCH /routines/trainee/:traineeId` - Update routine
-- `DELETE /routines/trainee/:traineeId` - Delete routine
-
-#### Registrations
-- `GET /registrations` - List all registrations
-- `POST /registrations` - Create new registration
-- `GET /registrations/:id` - Get registration details
-- `PATCH /registrations/:id` - Update registration
-- `DELETE /registrations/:id` - Delete registration
-
-## 💾 Database Schema
-
-### Tables
-- **Trainees**: User accounts for gym members
-- **Workouts**: Different types of workouts
-- **Routines**: Availability schedules for trainees
-- **Registrations**: Bookings for workout sessions
-
-### Relationships
-- One trainee can have multiple routines
-- One trainee can have multiple registrations
-- Routines and registrations belong to a trainee
-
-## 🎯 Usage Guide
-
-### For Administrators
-
-1. **Access the application**: Open `http://localhost:8080`
-2. **Create an account**: Click "Register here" on login page
-3. **Login**: Use your credentials to access the dashboard
-4. **Manage entities**:
-   - Add/edit/delete trainees
-   - Configure workout types
-   - Set up training routines
-   - Manage registrations
-
-### For API Consumers
-
-Use the interactive Swagger documentation at `/api-docs-en` or `/api-docs-et` to:
-- Explore available endpoints
-- Test API calls
-- View request/response schemas
-- Understand authentication requirements
-
-## 🔧 Development
-
-### Database Operations
-```bash
-# View data in Prisma Studio
-npx prisma studio
-
-# Reset database (destructive)
-npx prisma migrate reset
-
-# Create new migration
-npx prisma migrate dev --name migration_name
-
-# Generate Prisma client after schema changes
-npx prisma generate
+type Registration {
+   id: ID!
+   eventId: String!
+   userId: String!
+   inviteeEmail: String!
+   startTime: DateTime!
+   endTime: DateTime
+   status: RegistrationStatus!
+   trainee: Trainee!
+   createdAt: DateTime!
+   updatedAt: DateTime!
+}
 ```
 
-### Environment Variables
-- `PORT`: Server port (default: 3000)
-- `JWT_SECRET`: Secret key for JWT tokens
-- `DATABASE_URL`: Database connection string
+### Example Queries
 
-## 📝 Notes
+**Login and get user info:**
+```graphql
+mutation {
+   login(input: { email: "user@example.com", password: "password" }) {
+      token
+      trainee {
+         id
+         name
+         email
+      }
+   }
+}
 
-- **Security**: In production, update CORS settings and use secure JWT secrets
-- **Passwords**: Currently stored as plain text for demo purposes - implement bcrypt hashing for production
-- **Error Handling**: Comprehensive error handling is implemented for all API endpoints
-- **Responsive Design**: Frontend is mobile-friendly and adapts to different screen sizes
+query {
+   me {
+      authenticated
+      trainee {
+         id
+         name
+         email
+         routines {
+            availability {
+               day
+               startTime
+               endTime
+            }
+         }
+      }
+   }
+}
+```
 
-## 🐛 Troubleshooting
+**Create and query workouts:**
+```graphql
+mutation {
+   createWorkout(input: {
+      name: "HIIT Training"
+      duration: 45
+      description: "High intensity workout"
+      color: "#FF5733"
+   }) {
+      id
+      name
+      duration
+   }
+}
+
+query {
+   workouts {
+      id
+      name
+      duration
+      description
+      color
+   }
+}
+```
+
+## API Documentation
+
+### GraphQL Playground
+- **URL**: `http://localhost:4000/graphql`
+- Interactive playground with schema explorer
+- Auto-completion and documentation
+- Real-time query testing
+
+### Other APIs
+- **REST Swagger UI**: `http://localhost:3000/api-docs-en`
+- **SOAP WSDL**: `http://localhost:3001/soap?wsdl`
+
+### Operation Comparison
+
+| Operation | REST | SOAP | GraphQL |
+|-----------|------|------|---------|
+| Login | `POST /sessions` | `CreateSession` | `mutation { login }` |
+| Get Trainees | `GET /trainees` | `ListTrainees` | `query { trainees }` |
+| Create Workout | `POST /workouts` | `CreateWorkout` | `mutation { createWorkout }` |
+| Update Routine | `PATCH /routines/trainee/{id}` | `UpdateTraineeRoutine` | `mutation { updateTraineeRoutine }` |
+
+## Testing
+
+### Run All Tests
+```bash
+# Automated comparison tests
+npm test
+
+# Or manually
+chmod +x tests/test.sh
+./tests/test.sh
+```
+
+### Run Client Examples
+```bash
+# Test all GraphQL operations
+npm run test:client
+```
+
+### Validate GraphQL Schema
+```bash
+# Validate schema syntax
+npm run validate:schema
+```
+
+### Test Coverage
+
+1. **Authentication Tests**
+   - Login/logout functionality
+   - Session validation with `me` query
+   - Token verification
+
+2. **CRUD Operation Tests**
+   - Create, read, update, delete for all entities
+   - Data consistency between REST, SOAP, and GraphQL
+
+3. **GraphQL-Specific Tests**
+   - Schema introspection validation
+   - Query complexity and nested field resolution
+   - Input validation and error handling
+
+4. **Error Handling Tests**
+   - Invalid token scenarios
+   - Missing required fields
+   - GraphQL validation errors
+
+## Client Examples
+
+The `client/example.js` file demonstrates:
+
+- Authentication flow
+- CRUD operations for all entities
+- Nested queries with related data
+- Error handling
+- Token management
+
+Run examples:
+```bash
+node client/example.js
+```
+
+## Project Structure
+
+```
+gym-registration-graphql/
+├── README.md
+├── package.json
+├── .env.example
+├── .gitignore
+├── scripts/
+│   └── run.sh              # Main startup script
+├── schema/
+│   └── schema.graphql      # GraphQL schema definition
+├── src/
+│   └── server.js           # GraphQL server implementation
+├── tests/
+│   ├── test.sh             # Test runner script
+│   └── test.js             # Automated tests
+├── client/
+│   └── example.js          # GraphQL client example
+├── prisma/
+│   ├── schema.prisma       # Database schema
+│   └── migrations/         # Database migrations
+└── server.js               # REST API server
+```
+
+## Development
+
+### Development Commands
+```bash
+# Start GraphQL server with auto-reload
+npm run dev
+
+# Database operations
+npm run db:migrate
+npm run db:generate
+npm run db:studio
+npm run db:reset
+
+# Validate GraphQL schema
+npm run validate:schema
+```
+
+### GraphQL Schema Development
+
+1. Edit `schema/schema.graphql` for schema changes
+2. Update resolvers in `src/server.js`
+3. Run validation: `npm run validate:schema`
+4. Test changes: `npm test`
+
+### Adding New Operations
+
+1. Define types and operations in schema
+2. Implement resolvers
+3. Add tests
+4. Update client examples
+5. Document in README
+
+## Troubleshooting
 
 ### Common Issues
 
-1. **Prisma Client Error**
+1. **GraphQL Schema Validation Errors**
    ```bash
-   npx prisma generate
+   npm run validate:schema
    ```
 
-2. **CORS Errors**
-   - Ensure backend is running on port 3000
-   - Frontend should be served from a different port (8080)
+2. **Apollo Server Connection Issues**
+   - Check port 4000 is available
+   - Verify environment variables
+   - Check server logs for details
 
 3. **Database Issues**
    ```bash
@@ -250,20 +396,32 @@ npx prisma generate
    npx prisma migrate dev --name init
    ```
 
-4. **Port Already in Use**
+4. **Port Conflicts**
    ```bash
-   # Kill process on port 3000
-   npx kill-port 3000
+   # Kill process on specific port
+   lsof -ti:4000 | xargs kill -9
    ```
 
-## 📄 License
+5. **GraphQL Playground Not Loading**
+   - Ensure server is running
+   - Check browser console for errors
+   - Try accessing `http://localhost:4000/graphql` directly
+
+### Debugging GraphQL Queries
+
+1. Use GraphQL Playground at `http://localhost:4000/graphql`
+2. Check query syntax and variables
+3. Use introspection to explore schema
+4. Enable detailed error messages in development
+
+## License
 
 This project is created for educational purposes.
 
-## 👥 Authors
+## Authors
 
-Created as part of a programming course assignment.
+Created as part of a programming course assignment demonstrating API architecture equivalence.
 
 ---
 
-For more information, check the OpenAPI documentation or contact the development team.
+For more information about GraphQL, visit [https://graphql.org](https://graphql.org)

@@ -1,0 +1,419 @@
+# GraphQL Schema for Gym Registration System
+
+"Custom scalar type representing a date and time"
+scalar DateTime
+
+"Status of a workout registration"
+enum RegistrationStatus {
+  "The registration has been canceled"
+  CANCELED
+  "The registration has been completed"
+  COMPLETED
+  "The registration is scheduled"
+  SCHEDULED
+}
+
+"Days of the week for scheduling"
+enum DayOfWeek {
+  "Friday"
+  FRIDAY
+  "Monday"
+  MONDAY
+  "Saturday"
+  SATURDAY
+  "Sunday"
+  SUNDAY
+  "Thursday"
+  THURSDAY
+  "Tuesday"
+  TUESDAY
+  "Wednesday"
+  WEDNESDAY
+}
+
+# Core Types
+"A gym member who can book workout sessions"
+type Trainee {
+  "When the trainee was created"
+  createdAt: DateTime!
+  "Email address of the trainee"
+  email: String!
+  "Unique identifier for the trainee"
+  id: ID!
+  "Full name of the trainee"
+  name: String!
+  "List of registrations made by this trainee"
+  registrations: [Registration!]!
+  "List of routines created by this trainee"
+  routines: [Routine!]!
+  "Timezone preference of the trainee"
+  timezone: String
+  "When the trainee was last updated"
+  updatedAt: DateTime!
+}
+
+"A workout type with its details"
+type Workout {
+  "Color code for the workout (hex format)"
+  color: String
+  "When the workout was created"
+  createdAt: DateTime!
+  "Description of the workout"
+  description: String
+  "Duration of the workout in minutes"
+  duration: Int!
+  "Unique identifier for the workout"
+  id: ID!
+  "Name of the workout"
+  name: String!
+  "When the workout was last updated"
+  updatedAt: DateTime!
+}
+
+"Time slot for availability scheduling"
+type TimeSlot {
+  "Day of the week"
+  day: DayOfWeek!
+  "End time in HH:MM format"
+  endTime: String!
+  "Start time in HH:MM format"
+  startTime: String!
+}
+
+"A routine defining when a trainee is available"
+type Routine {
+  "List of available time slots"
+  availability: [TimeSlot!]!
+  "When the routine was created"
+  createdAt: DateTime!
+  "Unique identifier for the routine"
+  id: ID!
+  "The trainee this routine belongs to"
+  trainee: Trainee!
+  "When the routine was last updated"
+  updatedAt: DateTime!
+  "ID of the trainee who owns this routine"
+  userId: String!
+}
+
+"A registration for a workout session"
+type Registration {
+  "When the registration was created"
+  createdAt: DateTime!
+  "End time of the session"
+  endTime: DateTime
+  "External event ID"
+  eventId: String!
+  "Unique identifier for the registration"
+  id: ID!
+  "Email of the invitee"
+  inviteeEmail: String!
+  "Start time of the session"
+  startTime: DateTime!
+  "Current status of the registration"
+  status: RegistrationStatus!
+  "The trainee who made this registration"
+  trainee: Trainee!
+  "When the registration was last updated"
+  updatedAt: DateTime!
+  "ID of the trainee who made the registration"
+  userId: String!
+}
+
+# Auth Types
+"Result of a successful login"
+type AuthPayload {
+  "JWT authentication token"
+  token: String!
+  "The authenticated trainee"
+  trainee: Trainee!
+}
+
+"Session information"
+type Session {
+  "Whether the user is authenticated"
+  authenticated: Boolean!
+  "The authenticated trainee (if authenticated)"
+  trainee: Trainee
+}
+
+# Pagination Types
+"Pagination metadata"
+type Pagination {
+  "Current page number"
+  page: Int!
+  "Number of items per page"
+  pageSize: Int!
+  "Total number of items"
+  total: Int!
+}
+
+"Connection for paginated trainee results"
+type TraineeConnection {
+  "List of trainees"
+  data: [Trainee!]!
+  "Pagination information"
+  pagination: Pagination!
+}
+
+# Input Types
+"Input for user login"
+input LoginInput {
+  "Email address"
+  email: String!
+  "Password"
+  password: String!
+}
+
+"Input for creating a new trainee"
+input TraineeInput {
+  "Email address"
+  email: String!
+  "Full name"
+  name: String!
+  "Password"
+  password: String!
+  "Timezone preference"
+  timezone: String
+}
+
+"Input for updating a trainee"
+input TraineeUpdateInput {
+  "Email address"
+  email: String
+  "Full name"
+  name: String
+  "Password"
+  password: String
+  "Timezone preference"
+  timezone: String
+}
+
+"Input for creating a new workout"
+input WorkoutInput {
+  "Color code for the workout"
+  color: String
+  "Description of the workout"
+  description: String
+  "Duration in minutes"
+  duration: Int!
+  "Name of the workout"
+  name: String!
+}
+
+"Input for updating a workout"
+input WorkoutUpdateInput {
+  "Color code for the workout"
+  color: String
+  "Description of the workout"
+  description: String
+  "Duration in minutes"
+  duration: Int
+  "Name of the workout"
+  name: String
+}
+
+"Input for creating a time slot"
+input TimeSlotInput {
+  "Day of the week"
+  day: DayOfWeek!
+  "End time in HH:MM format"
+  endTime: String!
+  "Start time in HH:MM format"
+  startTime: String!
+}
+
+"Input for creating a routine"
+input RoutineInput {
+  "List of available time slots"
+  availability: [TimeSlotInput!]!
+  "ID of the trainee"
+  userId: ID!
+}
+
+"Input for updating a routine"
+input RoutineUpdateInput {
+  "List of available time slots"
+  availability: [TimeSlotInput!]!
+}
+
+"Input for creating a registration"
+input RegistrationInput {
+  "End time of the session"
+  endTime: DateTime
+  "External event ID"
+  eventId: String!
+  "Email of the invitee"
+  inviteeEmail: String!
+  "Start time of the session"
+  startTime: DateTime!
+  "Status of the registration"
+  status: RegistrationStatus
+  "ID of the trainee"
+  userId: ID!
+}
+
+"Input for updating a registration"
+input RegistrationUpdateInput {
+  "End time of the session"
+  endTime: DateTime
+  "External event ID"
+  eventId: String
+  "Email of the invitee"
+  inviteeEmail: String
+  "Start time of the session"
+  startTime: DateTime
+  "Status of the registration"
+  status: RegistrationStatus
+  "ID of the trainee"
+  userId: ID
+}
+
+# Queries
+"Root query type"
+type Query {
+  "Get current user session information"
+  me: Session!
+
+  "Get a specific registration by ID"
+  registration(
+    "Registration ID"
+    id: ID!
+  ): Registration
+
+  "Get all registrations"
+  registrations: [Registration!]!
+
+  "Get routines, optionally filtered by trainee ID"
+  routines(
+    "Optional trainee ID to filter routines"
+    traineeId: ID
+  ): [Routine!]!
+
+  "Get a specific trainee by ID"
+  trainee(
+    "Trainee ID"
+    id: ID!
+  ): Trainee
+
+  "Get a specific trainee's routine"
+  traineeRoutine(
+    "Trainee ID"
+    traineeId: ID!
+  ): Routine
+
+  "Get all trainees with pagination"
+  trainees(
+    "Page number to retrieve"
+    page: Int = 1
+    "Number of items per page"
+    pageSize: Int = 20
+  ): TraineeConnection!
+
+  "Get a specific workout by ID"
+  workout(
+    "Workout ID"
+    id: ID!
+  ): Workout
+
+  "Get all workouts"
+  workouts: [Workout!]!
+}
+
+# Mutations
+"Root mutation type"
+type Mutation {
+  # Authentication
+  "Log in a user"
+  login(
+    "Login credentials"
+    input: LoginInput!
+  ): AuthPayload!
+
+  "Log out the current user"
+  logout: String!
+
+  # Registrations
+  "Create a new registration"
+  createRegistration(
+    "Registration details"
+    input: RegistrationInput!
+  ): Registration!
+
+  "Delete a registration"
+  deleteRegistration(
+    "Registration ID to delete"
+    id: ID!
+  ): String!
+
+  "Update a registration"
+  updateRegistration(
+    "Registration ID to update"
+    id: ID!
+    "Updated registration data"
+    input: RegistrationUpdateInput!
+  ): Registration!
+
+  # Routines
+  "Create a new routine"
+  createRoutine(
+    "Routine details"
+    input: RoutineInput!
+  ): Routine!
+
+  "Delete a trainee's routine"
+  deleteTraineeRoutine(
+    "Trainee ID whose routine to delete"
+    traineeId: ID!
+  ): String!
+
+  "Update a trainee's routine"
+  updateTraineeRoutine(
+    "Trainee ID whose routine to update"
+    traineeId: ID!
+    "Updated routine data"
+    input: RoutineUpdateInput!
+  ): Routine!
+
+  # Trainees
+  "Create a new trainee"
+  createTrainee(
+    "Trainee details"
+    input: TraineeInput!
+  ): Trainee!
+
+  "Delete a trainee"
+  deleteTrainee(
+    "Trainee ID to delete"
+    id: ID!
+  ): String!
+
+  "Update a trainee"
+  updateTrainee(
+    "Trainee ID to update"
+    id: ID!
+    "Updated trainee data"
+    input: TraineeUpdateInput!
+  ): Trainee!
+
+  # Workouts
+  "Create a new workout"
+  createWorkout(
+    "Workout details"
+    input: WorkoutInput!
+  ): Workout!
+
+  "Delete a workout"
+  deleteWorkout(
+    "Workout ID to delete"
+    id: ID!
+  ): String!
+
+  "Update a workout"
+  updateWorkout(
+    "Workout ID to update"
+    id: ID!
+    "Updated workout data"
+    input: WorkoutUpdateInput!
+  ): Workout!
+}
